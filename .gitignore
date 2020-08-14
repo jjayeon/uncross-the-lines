@@ -1,2 +1,5 @@
+# ignore distribution files
+dist/
+
 # emacs backups
 *~
