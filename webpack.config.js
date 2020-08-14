@@ -9,7 +9,7 @@ module.exports = {
     plugins: [
 	new CleanWebpackPlugin(),
 	new HtmlWebpackPlugin({
-	    title: 'Uncross the Lines',
+	    title: "robert's face is ugly",
 	    template: './src/index.html'
 	})
     ],
