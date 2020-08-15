@@ -222,7 +222,8 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    mouseY: 0,
 	    shiftdown: false,
 	    mousedown: false,
-	    moved: false
+	    moved: false,
+	    newcircle: false
 	})
     
     // oh no logic
@@ -232,7 +233,40 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    var p = draw.point(e.pageX, e.pageY);
 	    this.data({ mousedown: true });
 
-	    g_circles.fire('select', { px: p.x, py: p.y });
+	    var circle = null;
+	    var newcircle = false;
+	    var looping = true;
+	    g_circles.each(function(i, children) {
+		if (looping) {
+		    var child = children[i];
+		    if (child.inside(p.x, p.y)) {
+			circle = child;
+			if (!child.data('selected')) {
+			    newcircle = true;
+			}
+			looping = false;
+		    }
+		}
+	    });
+	    this.data({ newcircle: newcircle });
+
+	    if (circle === null) {
+		g_circles.fire('clear');
+	    }
+	    else {
+		if (!this.data('shiftdown')) {
+		    g_circles.fire('select', { px: p.x, py: p.y });
+		}
+		else {
+		    if (circle.data('selected')) {
+			circle.fire('deselect');
+		    }
+		    else {
+			circle.fire('select');
+		    }
+
+		}
+	    }
 	})
 	.on('mousemove', function(e) {
 	    var p = draw.point(e.pageX, e.pageY);
@@ -244,9 +278,16 @@ function makeInput(draw, w, h, reset, g_circles) {
 
 	    this.data({ mouseX: p.x });
 	    this.data({ mouseY: p.y });
+	    
+	    if (this.data('mousedown')) {
+		if (!this.data('shiftdown')) {
+		    
+		    if (this.data('newcircle')) {
+			g_circles.fire('clear');
+			g_circles.fire('select', { px: p.x, py: p.y });
+			this.data({ newcircle: false });
+		    }
 
-	    if (!this.data('shiftdown')) {
-		if (this.data('mousedown')) {
 		    g_circles.fire('dmove', { dx: dx, dy: dy });
 		    this.data({ moved: true });
 		}
