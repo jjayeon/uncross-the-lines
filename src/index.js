@@ -82,7 +82,7 @@ function makeCircle(draw, r) {
 
     // these are useful custom events ---- update state and recolor.
 	.on('select', function() {
-	    this.fill('rgb(0, 0, 150)')
+	    this.fill('rgb(150, 0, 0)')
 		.data('selected', true, true);
 	})
 	.on('deselect', function() {
@@ -113,6 +113,35 @@ function makeCircles(draw, w, h, n, r, b) {
 			h/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
 	});
     })
+	.on('clear', function() {
+	    this.each(function(i, children) {
+		children[i].fire('deselect');
+	    })
+	})
+	.on('select', function(e) {
+	    const px = e.detail.px, py = e.detail.py;
+
+	    var cont = true;
+	    this.each(function(i, children) {
+		var child = children[i];
+		if (cont &&
+		    child.inside(px, py)) {
+		    child.fire('select');
+		    cont = false;
+		}
+	    });
+	})
+	.on('dmove', function(e) {
+	    const dx = e.detail.dx, dy = e.detail.dy;
+	    
+	    this.each(function(i, children) {
+		var child = children[i];
+
+		if(child.data('selected')) {
+		    child.dmove(dx, dy);
+		}
+	    })
+	})
     // on "scramble", simply scramble the positions.
 	.on('scramble', function() {
 	    
@@ -188,68 +217,52 @@ function makeInput(draw, w, h, reset, g_circles) {
 	.fill({ opacity: 0 })
 
     // oh no state variables
-	.data('shiftdown', false, true)
-	.data('mousedown', false, true)
-	.data('mouseX', 0, true)
-    	.data('mouseY', 0, true)
+	.data({
+	    mouseX: 0,
+	    mouseY: 0,
+	    shiftdown: false,
+	    mousedown: false,
+	    moved: false
+	})
     
     // oh no logic
     // mouse input:
 	.on('mousedown', function(e) {
 	    // this transforms the click point into a point SVG can understand.
 	    var p = draw.point(e.pageX, e.pageY);
-	    
-	    // keep track of whether we clicked on a circle.
-	    var circled = false;
+	    this.data({ mousedown: true });
 
-	    // go thru each circle...
-	    g_circles.each(function(i, children) {
-		var circle = children[i];
-
-		// deselect all...
-		circle.fire('deselect');
-
-		// and select the one we clicked on.
-		if (!circled &&
-		    circle.inside(p.x, p.y)) {
-		    circle.fire('select');
-		    circled = true;
-		}
-	    });
-
-	    // if we didn't click a circle, check if we clicked the reset button.
-	    if (!circled &&
-		reset.inside(p.x, p.y)) {
-		reset.fire('reset');
-	    }
-
-	    this.data('mousedown', true, true);
+	    g_circles.fire('select', { px: p.x, py: p.y });
 	})
 	.on('mousemove', function(e) {
 	    var p = draw.point(e.pageX, e.pageY);
-
 	    const prevX = this.data('mouseX');
 	    const prevY = this.data('mouseY');
-
-	    this.data('mouseX', p.x, true);
-	    this.data('mouseY', p.y, true);
 	    
 	    const dx = p.x - prevX;
 	    const dy = p.y - prevY;
-	    
-	    if (this.data('mousedown')) {
-		
-		g_circles.each(function(i, children) {
-		    var circle = children[i];
 
-		    if (circle.data('selected')) {
-			circle.dmove(dx, dy);
-		    }
-		});
+	    this.data({ mouseX: p.x });
+	    this.data({ mouseY: p.y });
+
+	    if (!this.data('shiftdown')) {
+		if (this.data('mousedown')) {
+		    g_circles.fire('dmove', { dx: dx, dy: dy });
+		    this.data({ moved: true });
+		}
 	    }
 	})
 	.on('mouseup', function(e) {
-	    this.data('mousedown', false, true);
+	    var p = draw.point(e.pageX, e.pageY);
+	    this.data({ mousedown: false });
+
+	    if (!this.data('moved') &&
+		!this.data('shiftdown')) {
+		g_circles.fire('clear');
+		g_circles.fire('select', { px: p.x, py: p.y });
+	    }
+
+	    this.data({ moved: false });
 	})
 
     // keyboard input:
@@ -259,15 +272,15 @@ function makeInput(draw, w, h, reset, g_circles) {
 		
 	    case 'r': reset.fire('reset'); break;                    // r: reset the board.
 	    case ' ': g_circles.fire('solve'); break;                // space: "solve" the board (make a circle).
-	    case 'Shift': this.data('shiftdown', true, true); break; // shift: toggle the "shift" global. (not really a global)
+	    case 'Shift': this.data({ shiftdown: true }); break; // shift: toggle the "shift" state.
 	    }
+
 	})
 	.on('keyup', function(e) {
 	    var key = e.detail.key;
 	    switch(key) {
 		
-	    case 'Shift': this.data('shiftdown', false, true); break; // shift: toggle the "shift" global. (not really a global)
-		
+	    case 'Shift': this.data({ shiftdown: false }); break; // shift: toggle the "shift" state.
 	    }
 	});
 }
