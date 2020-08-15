@@ -379,8 +379,7 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    // in the case of "shift",
 	    // we already handled the selection logic in mousedown, 
 	    // so we don't need to do anything here.
-	    if (!this.data('moved') &&
-		!this.data('shiftdown')) {
+	    if (!this.data('shiftdown')) {
 		g_circles.fire('clear');
 		g_circles.fire('select', { px: p.x, py: p.y });
 		this.data({ moved: false });
