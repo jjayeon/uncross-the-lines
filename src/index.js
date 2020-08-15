@@ -3,8 +3,7 @@ import { SVG } from '@svgdotjs/svg.js'
 // welcome!
 // this is a one-shot javascript implementation of the great game "Uncross the Lines,
 // in which --- you guessed it --- you uncross some lines.
-// My "special feature" is that you can select multiple circles with box selection,
-//  and shift to add/remove circles from the selection as well.
+// My "special feature" is that you can use shift to select multiple circles.
 
 // this function contains the bulk of the logic.
 // it's pretty much just a series of calls to the below functions.
@@ -115,7 +114,7 @@ function makeCircle(draw, r) {
 	.data('selected', false, true)
 
     // uh oh, logic
-    // these are useful custom events.
+    // these are useful custom events ---- update state and recolor.
 	.on('select', function () {
 	    this.fill('rgb(0, 0, 150)')
 		.data('selected', true, true);
@@ -127,7 +126,7 @@ function makeCircle(draw, r) {
 
     // UH OH, LOGIC
     // input processing time
-	.click(function () {
+	.mousedown(function () {
 	    // TODO: figure out a better way to detect if shift is down
 	    var shift = false;
 
