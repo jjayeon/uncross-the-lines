@@ -252,6 +252,9 @@ function makeInput(draw, w, h, reset, g_circles) {
 
 	    if (circle === null) {
 		g_circles.fire('clear');
+		if (reset.inside(p.x, p.y)) {
+		    reset.fire('reset');
+		}
 	    }
 	    else {
 		if (!this.data('shiftdown')) {
@@ -311,11 +314,10 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    var key = e.detail.key;
 	    switch(key) {
 		
-	    case 'r': reset.fire('reset'); break;                    // r: reset the board.
-	    case ' ': g_circles.fire('solve'); break;                // space: "solve" the board (make a circle).
+	    case 'r': reset.fire('reset'); break;                // r: reset the board.
+	    case ' ': g_circles.fire('solve'); break;            // space: "solve" the board (make a circle).
 	    case 'Shift': this.data({ shiftdown: true }); break; // shift: toggle the "shift" state.
 	    }
-
 	})
 	.on('keyup', function(e) {
 	    var key = e.detail.key;
