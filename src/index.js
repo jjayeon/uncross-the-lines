@@ -55,7 +55,7 @@ function init() {
     // the circles that the user can click on.
     const g_circles = makeCircles(draw, w_min, w_max, h_min, h_max, numCircles, circleRadius, buffer);
     g_circles.getCircleAt = function(x, y) {
-	const circle = null;
+	var circle = null;
 	var looping = true;
 	this.each(function(i, children) {
 	    if (looping) {
