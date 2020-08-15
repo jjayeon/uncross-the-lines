@@ -34,35 +34,31 @@ function init() {
     const numCircles = 10;
     const circleRadius = 20;
 
-    // SVG STUFF
+    // SVG STUFF:
     // --------------------------------
     const draw = SVG().addTo('#drawing').size(width, height);
-
+    
     // the circles that the user can click on.
-    const g_circles = draw.group();
-
-    // we'll put them in a big circle by default.
-    // she's messy, but she just makes n circles and arranges them in a ring.
-    // if you're puzzled, ask your trig professor.
-    function __makeBigCircle(r) {
-	for (var i = 0; i < numCircles; i++) {
-	    makeCircle(g_circles, circleRadius)
-	    
-		.center( width/2 + r * Math.cos(Math.PI*2 * (i/numCircles)),
-			height/2 + r * Math.sin(Math.PI*2 * (i/numCircles)));
-	}
-    }
-    __makeBigCircle(200);
+    const g_circles = makeCircles(draw, width, height, numCircles, circleRadius, buffer);
 
     // the lines connecting the circles.
     const g_lines = draw.group();
 
-    // the other SVG pieces --- background, input layer, and reset button.
+    // and the other SVG stuff --- the background, reset button, and input layer.
     // see makeInput() for more info on the input layer.
     const bg = makeBG(draw, width, height);
-    const reset = makeResetButton(draw, buttonWidth, buttonHeight, bg);
+    const reset = makeResetButton(draw, buttonWidth, buttonHeight, g_circles);
     const input = makeInput(draw, width, height, reset, g_circles);
 
+    // some boilerplate to pass keystrokes to our input layer.
+    // SVG.js can handle clicks natively, but not keystrokes. go figure.
+    document.onkeydown = function(e) {
+	input.fire('keydown', e);
+    }
+    document.onkeyup = function(e) {
+	input.fire('keyup', e);
+    }
+    
     // put everything in the right order.
     bg.front();
     reset.front();
@@ -96,6 +92,44 @@ function makeCircle(draw, r) {
 	.fire('deselect');
 }
 
+function makeCircles(draw, w, h, n, r, b) {
+
+    var out = draw.group();
+    for (var i = 0; i < n; i++) {
+	makeCircle(out, r);
+    }
+
+    // on "solve", we'll put the circles in a big circle.
+    var bigCircleRadius = 200;
+    return out.on('solve', function() {
+	this.each(function(i, children) {
+	    var circle = children[i];
+
+	    // this goes in a circle.
+	    // if you're puzzled, ask your trig professor.
+	    circle.fire('deselect');
+	    circle.center(w/2 + bigCircleRadius * Math.cos(Math.PI*2 * (i/children.length)),
+			  h/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
+	});
+    })
+    // on "scramble", simply scramble the positions.
+	.on('scramble', function() {
+	    
+	    const w_min = b, w_max = w - b, h_min = b, h_max = h - b;
+	    function randRange(min, max) {
+		return Math.random() * (max - min) + min;
+	    }
+	    
+	    this.each(function(i, children) {
+		var circle = children[i];
+		circle.center(randRange(w_min, w_max),
+			      randRange(h_min, h_max));
+	    });
+	})
+	.fire('scramble');
+}
+
+
 // make a big rectangle covering the whole canvas.
 // changes color on 'success' and 'failure' events,
 // and stores the game's win state.
@@ -105,41 +139,35 @@ function makeBG(draw, w, h) {
 	.data('success', false, true)
     
 	.on('success',  function() {
-	    this.data('success', true, true);
-	    this.fill({ color: 'rgb(240, 255, 240)' })})
+	    this.fill('rgb(240, 255, 240)')
+		.data('success', true, true);})
     
 	.on('failure', function() {
-	    this.data('success', false, true);
-	    this.fill({ color: 'rgb(255, 240, 240)' })})
+	    this.fill('rgb(255, 240, 240)')
+		.data('success', false, true);})
     
 	.fire('failure');
 }
 
-// make a button that resets the canvas.
+// make a button that scrambles the circle positions.
 // for testing purposes i had it change the BG color. two in one test!
 // returns a group, not the canvas.
-function makeResetButton(draw, w, h, bg) {
+function makeResetButton(draw, w, h, g_circles) {
     
     var out = draw.group().size(w, h);
 
     // test function mentioned above.
     out.on('reset', function() {
-    	if (bg.data('success')) {
-    	    bg.fire('failure');
-    	}
-    	else {
-    	    bg.fire('success');
-    	}
+	g_circles.fire('scramble');
     });
 
     // orange rectangle
     out.rect(w, h)
-	.front()
-	.fill({ color: 'rgb(255, 112, 77)' });
+	.fill('rgb(255, 112, 77)');
 
     // and some instruction text
     out.text('reset')
-	.center(w/2, h/2)
+	.center(w/2, h/2);
 
     return out;
 }
@@ -163,12 +191,15 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    
 	    // keep track of whether we clicked on a circle.
 	    var circled = false;
-	    
-	    g_circles.each(function(i, array) {
-		var circle = array[i];
-		
+
+	    // go thru each circle...
+	    g_circles.each(function(i, children) {
+		var circle = children[i];
+
+		// deselect all...
 		circle.fire('deselect');
 
+		// and select the one we clicked on.
 		if (circle.inside(p.x, p.y)) {
 		    circle.fire('select');
 		    circled = true;
@@ -180,6 +211,23 @@ function makeInput(draw, w, h, reset, g_circles) {
 		reset.inside(p.x, p.y)) {
 		reset.fire('reset');
 	    }
+	})
+
+    // keyboard input:
+    // boilerplate for now. we have one keybinding though!
+	.on('keydown', function(e) {
+	    var key = e.detail.key;
+	    console.log(key + ' down');
+
+	    // keybind: space "solves" the board,
+	    // which just means putting them in a circle.
+	    if (key === ' ') {
+		g_circles.fire('solve');
+	    }
+	})
+	.on('keyup', function(e) {
+	    var key = e.detail.key;
+	    console.log(key + ' up');
 	});
 }
 
