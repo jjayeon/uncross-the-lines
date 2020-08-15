@@ -183,9 +183,13 @@ function makeInput(draw, w, h, reset, g_circles) {
     return draw.rect(w, h)
 	.fill({ opacity: 0 })
 
+    // oh no state variables
+	.data('shiftdown', false, true)
+	.data('mousedown', false, true)
+    
     // oh no logic
-	.on('click', function(e) {
-
+    // mouse input:
+	.on('mousedown', function(e) {
 	    // this transforms the click point into a point SVG can understand.
 	    var p = draw.point(e.pageX, e.pageY);
 	    
@@ -212,23 +216,32 @@ function makeInput(draw, w, h, reset, g_circles) {
 		reset.fire('reset');
 	    }
 	})
+	.on('mousemove', function(e) {
+
+	})
+	.on('mouseup', function(e) {
+
+	})
 
     // keyboard input:
-    // boilerplate for now. we have one keybinding though!
 	.on('keydown', function(e) {
 	    var key = e.detail.key;
-	    console.log(key + ' down');
-
-	    // keybind: space "solves" the board,
-	    // which just means putting them in a circle.
-	    if (key === ' ') {
-		g_circles.fire('solve');
+	    switch(key) {
+		
+	    case 'r': reset.fire('reset'); break;                    // r: reset the board.
+	    case ' ': g_circles.fire('solve'); break;                // space: "solve" the board (make a circle).
+	    case 'Shift': this.data('shiftdown', true, true); break; // shift: toggle the "shift" global. (not really a global)
 	    }
 	})
 	.on('keyup', function(e) {
 	    var key = e.detail.key;
-	    console.log(key + ' up');
+	    switch(key) {
+		
+	    case 'Shift': this.data('shiftdown', false, true); break; // shift: toggle the "shift" global. (not really a global)
+		
+	    }
 	});
 }
+
 
 init();
