@@ -152,7 +152,7 @@ function makeCircles(draw, w_min, w_max, h_min, h_max, n, r, b) {
 			(h_min+h_max)/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
 	});
     })
-        // on "scramble", simply scramble the positions.
+    // on "scramble", simply scramble the positions.
 	.on('scramble', function() {
 	    function randRange(min, max) {
 		return Math.random() * (max - min) + min;
@@ -276,10 +276,11 @@ function makeInput(draw, w, h, reset, g_circles) {
 	.data({
 	    mouseX: 0,
 	    mouseY: 0,
-	    shiftdown: false,
-	    mousedown: false,
 	    moved: false,
-	    newcircle: false
+	    newcircle: false,
+
+	    shiftdown: false,
+	    mousedown: false
 	})
     
     // oh no logic
@@ -312,6 +313,9 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    else {
 		// if we're not holding down shift, select this circle.
 		if (!this.data('shiftdown')) {
+		    if (newcircle) {
+			g_circles.fire('clear');
+		    }
 		    circle.fire('select');
 		}
 		// otherwise, we should toggle the selection.
@@ -350,14 +354,6 @@ function makeInput(draw, w, h, reset, g_circles) {
 		// and only move things if shift is released.
 		if (!this.data('shiftdown')) {
 
-		    // if we've selected a new circle,
-		    // get rid the old circles.
-		    if (this.data('newcircle')) {
-			g_circles.fire('clear');
-			g_circles.fire('select', { px: p.x, py: p.y });
-			this.data({ newcircle: false });
-		    }
-
 		    // and move!
 		    if (draw.inBoundsX(p.x)) {
 			g_circles.fire('dx', { dx: dx });
@@ -379,11 +375,15 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    // in the case of "shift",
 	    // we already handled the selection logic in mousedown, 
 	    // so we don't need to do anything here.
-	    if (!this.data('shiftdown')) {
+
+	    if (!this.data('moved') &&
+		!this.data('shiftdown')) {
 		g_circles.fire('clear');
 		g_circles.fire('select', { px: p.x, py: p.y });
-		this.data({ moved: false });
 	    }
+	    
+	    this.data({ newcircle: false });
+	    this.data({ moved: false });
 	})
 
     // keyboard input:
