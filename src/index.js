@@ -1,11 +1,13 @@
-import { SVG } from '@svgdotjs/svg.js'
-
 // welcome!
 // this is a one-shot javascript implementation of the great game "uncross the lines",
 // in which --- you guessed it --- you uncross some lines.
 // my "special feature" is that you can use shift to select multiple circles,
 // and draw boxes to select like in an RTS.
 // ----------------------------------------------------------------
+
+import { SVG } from '@svgdotjs/svg.js'
+// as you can see, this project uses SVG.js.
+// go thru their crap documentation on svgjs.com for an overview.
 
 // init() contains the bulk of the logic.
 // i put it up here because to anyone trying to read my code,
@@ -14,7 +16,6 @@ function init() {
 
     // CONSTANTS:
     // --------------------------------
-
     // getting the screen size.
     const width  = (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth) *  (9/10);
     const height = (window.innerHeight|| document.documentElement.clientHeight|| document.body.clientHeight) * (9/10);
@@ -107,9 +108,9 @@ function makeCircles(draw, w, h, n, r, b) {
 
 	    // this goes in a circle.
 	    // if you're puzzled, ask your trig professor.
-	    circle.fire('deselect');
-	    circle.center(w/2 + bigCircleRadius * Math.cos(Math.PI*2 * (i/children.length)),
-			  h/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
+	    circle.fire('deselect')
+		.center(w/2 + bigCircleRadius * Math.cos(Math.PI*2 * (i/children.length)),
+			h/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
 	});
     })
     // on "scramble", simply scramble the positions.
@@ -122,8 +123,10 @@ function makeCircles(draw, w, h, n, r, b) {
 	    
 	    this.each(function(i, children) {
 		var circle = children[i];
-		circle.center(randRange(w_min, w_max),
-			      randRange(h_min, h_max));
+
+		circle.fire('deselect')
+		    .center(randRange(w_min, w_max),
+			    randRange(h_min, h_max));
 	    });
 	})
 	.fire('scramble');
@@ -167,7 +170,8 @@ function makeResetButton(draw, w, h, g_circles) {
 
     // and some instruction text
     out.text('reset')
-	.center(w/2, h/2);
+	.font({ size: 24 })
+    	.center(w/2, h/2);
 
     return out;
 }
@@ -186,6 +190,8 @@ function makeInput(draw, w, h, reset, g_circles) {
     // oh no state variables
 	.data('shiftdown', false, true)
 	.data('mousedown', false, true)
+	.data('mouseX', 0, true)
+    	.data('mouseY', 0, true)
     
     // oh no logic
     // mouse input:
@@ -204,7 +210,8 @@ function makeInput(draw, w, h, reset, g_circles) {
 		circle.fire('deselect');
 
 		// and select the one we clicked on.
-		if (circle.inside(p.x, p.y)) {
+		if (!circled &&
+		    circle.inside(p.x, p.y)) {
 		    circle.fire('select');
 		    circled = true;
 		}
@@ -215,12 +222,34 @@ function makeInput(draw, w, h, reset, g_circles) {
 		reset.inside(p.x, p.y)) {
 		reset.fire('reset');
 	    }
+
+	    this.data('mousedown', true, true);
 	})
 	.on('mousemove', function(e) {
+	    var p = draw.point(e.pageX, e.pageY);
 
+	    const prevX = this.data('mouseX');
+	    const prevY = this.data('mouseY');
+
+	    this.data('mouseX', p.x, true);
+	    this.data('mouseY', p.y, true);
+	    
+	    const dx = p.x - prevX;
+	    const dy = p.y - prevY;
+	    
+	    if (this.data('mousedown')) {
+		
+		g_circles.each(function(i, children) {
+		    var circle = children[i];
+
+		    if (circle.data('selected')) {
+			circle.dmove(dx, dy);
+		    }
+		});
+	    }
 	})
 	.on('mouseup', function(e) {
-
+	    this.data('mousedown', false, true);
 	})
 
     // keyboard input:
