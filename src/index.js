@@ -54,7 +54,21 @@ function init() {
     }
     // the circles that the user can click on.
     const g_circles = makeCircles(draw, w_min, w_max, h_min, h_max, numCircles, circleRadius, buffer);
-
+    g_circles.getCircleAt = function(x, y) {
+	const circle = null;
+	var looping = true;
+	this.each(function(i, children) {
+	    if (looping) {
+		const child = children[i];
+		if (child.inside(x, y)) {
+		    circle = child;
+		    looping = false;
+		}
+	    }
+	});
+	return circle;
+    }
+    
     // the lines connecting the circles.
     const g_lines = draw.group();
 
@@ -129,13 +143,13 @@ function makeCircles(draw, w_min, w_max, h_min, h_max, n, r, b) {
     return out.on('solve', function() {
 	
 	this.each(function(i, children) {
-	    var circle = children[i];
+	    const circle = children[i];
 
 	    // this goes in a circle.
 	    // if you're puzzled, ask your trig professor.
 	    circle.fire('deselect')
-		.center(w/2 + bigCircleRadius * Math.cos(Math.PI*2 * (i/children.length)),
-			h/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
+		.center((w_min+w_max)/2 + bigCircleRadius * Math.cos(Math.PI*2 * (i/children.length)),
+			(h_min+h_max)/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
 	});
     })
         // on "scramble", simply scramble the positions.
@@ -145,7 +159,7 @@ function makeCircles(draw, w_min, w_max, h_min, h_max, n, r, b) {
 	    }
 	    
 	    this.each(function(i, children) {
-		var circle = children[i];
+		const circle = children[i];
 
 		circle.fire('deselect')
 		    .center(randRange(w_min, w_max),
@@ -166,7 +180,7 @@ function makeCircles(draw, w_min, w_max, h_min, h_max, n, r, b) {
 	    var looping = true;
 	    this.each(function(i, children) {
 		if (looping) {
-		    var child = children[i];
+		    const child = children[i];
 		    if (child.inside(px, py)) {
 			child.fire('select');
 			looping = false;
@@ -174,21 +188,28 @@ function makeCircles(draw, w_min, w_max, h_min, h_max, n, r, b) {
 		}
 	    });
 	})
-    // custom move function. only moves selected circles,
+    // custom move functions. only moves selected circles,
     // and only moves them if they'll stay in bounds.
-	.on('dmove', function(e) {
-	    const dx = e.detail.dx, dy = e.detail.dy;
-	    
+	.on('dx', function(e) {
 	    this.each(function(i, children) {
 		const child = children[i];
-		const newx = child.cx() + dx;
-		const newy = child.cy() + dy;
-
+		
 		if(child.data('selected')) {
-
+		    const newx = child.cx() + e.detail.dx;
+		    
 		    if (draw.inBoundsX(newx)) {
 			child.cx(newx);
 		    }
+		}
+	    })
+	})
+    	.on('dy', function(e) {
+	    this.each(function(i, children) {
+		const child = children[i];
+		
+		if(child.data('selected')) {
+		    const newy = child.cy() + e.detail.dy;
+		    
 		    if (draw.inBoundsY(newy)) {
 			child.cy(newy);
 		    }
@@ -222,7 +243,7 @@ function makeBG(draw, w, h) {
 // returns a group, not the canvas.
 function makeResetButton(draw, w, h, g_circles) {
     
-    var out = draw.group().size(w, h);
+    const out = draw.group().size(w, h);
 
     out.on('reset', function() {
 	g_circles.fire('scramble');
@@ -265,28 +286,15 @@ function makeInput(draw, w, h, reset, g_circles) {
     // mouse input:
 	.on('mousedown', function(e) {
 	    // this transforms the click point into a point SVG can understand.
-	    var p = draw.point(e.pageX, e.pageY);
+	    const p = draw.point(e.pageX, e.pageY);
 	    this.data({ mousedown: true });
 
 	    // this block tells us if there's a circle under the mouse cursor on click,
 	    // as well as if it's a "new" (unselected) circle or not.
 	    // TODO: turn this into another custom event on makeCircles()?
 	    // i have no idea how that would work.
-	    var circle = null;
-	    var newcircle = false;
-	    var looping = true;
-	    g_circles.each(function(i, children) {
-		if (looping) {
-		    var child = children[i];
-		    if (child.inside(p.x, p.y)) {
-
-			// important assignments!
-			circle = child;
-			newcircle = !child.data('selected');
-			looping = false;
-		    }
-		}
-	    });
+	    const circle = g_circles.getCircleAt(p.x, p.y);
+	    const newcircle = (circle && !circle.data('selected'))
 	    this.data({ newcircle: newcircle });
 	    // as of here, we know that:
 	    // circle will contain the circle under the pointer, or null if there is none.
@@ -320,12 +328,12 @@ function makeInput(draw, w, h, reset, g_circles) {
 	})
     // now for mouse movement:
 	.on('mousemove', function(e) {
-	    var p = draw.point(e.pageX, e.pageY);
+	    const p = draw.point(e.pageX, e.pageY);
 
 	    // this weirdness gets the recent motion of the mouse cursor.
 	    const prevX = this.data('mouseX');
 	    const prevY = this.data('mouseY');
-	    
+
 	    const dx = p.x - prevX;
 	    const dy = p.y - prevY;
 	    
@@ -337,7 +345,7 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    
 	    // only fire if the mouse is held down.
 	    if (this.data('mousedown')) {
-		console.log(`cursor: ${p.x}, ${p.y} (${dx}, ${dy})`);
+		// console.log(`cursor: ${p.x}, ${p.y} (${dx}, ${dy})`);
 
 		// and only move things if shift is released.
 		if (!this.data('shiftdown')) {
@@ -351,14 +359,19 @@ function makeInput(draw, w, h, reset, g_circles) {
 		    }
 
 		    // and move!
-		    g_circles.fire('dmove', { dx: dx, dy: dy });
+		    if (draw.inBoundsX(p.x)) {
+			g_circles.fire('dx', { dx: dx });
+		    }
+		    if (draw.inBoundsY(p.y)) {
+			g_circles.fire('dy', { dy: dy });
+		    }
 		    this.data({ moved: true });
 		}
 	    }
 	})
     // and when the mouse is released:
 	.on('mouseup', function(e) {
-	    var p = draw.point(e.pageX, e.pageY);
+	    const p = draw.point(e.pageX, e.pageY);
 	    this.data({ mousedown: false });
 
 	    // if we didn't move anything, 
@@ -376,7 +389,7 @@ function makeInput(draw, w, h, reset, g_circles) {
 
     // keyboard input:
 	.on('keydown', function(e) {
-	    var key = e.detail.key;
+	    const key = e.detail.key;
 	    switch(key) { // do different things depending on which key.
 		
 	    case 'r': reset.fire('reset'); break;                // r: reset the board.
@@ -385,7 +398,7 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    }
 	})
 	.on('keyup', function(e) {
-	    var key = e.detail.key;
+	    const key = e.detail.key;
 	    switch(key) {
 		
 	    case 'Shift': this.data({ shiftdown: false }); break; // shift: toggle the "shift" state.
