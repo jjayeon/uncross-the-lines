@@ -31,6 +31,10 @@ function init() {
     // don't make circles this close to the edge.
     const buffer = buttonHeight;
 
+    // get the true bounds of the canvas.
+    const w_min = buffer, w_max = width - buffer,
+	  h_min = buffer, h_max = height - buffer;
+    
     // circle values.
     const numCircles = 10;
     const circleRadius = 20;
@@ -38,9 +42,18 @@ function init() {
     // SVG STUFF:
     // --------------------------------
     const draw = SVG().addTo('#drawing').size(width, height);
-    
+
+    // define some helper functions on draw.
+    // draw is the only namespace that's guaranteed to be in all contexts, so we're putting it here.
+    // TODO: do this in a way that isn't obscenely disgusting.
+    draw.inBoundsX = function (x) {
+	return w_min < x && x < w_max;
+    }
+    draw.inBoundsY = function (y) {
+	return h_min < y && y < h_max;
+    }
     // the circles that the user can click on.
-    const g_circles = makeCircles(draw, width, height, numCircles, circleRadius, buffer);
+    const g_circles = makeCircles(draw, w_min, w_max, h_min, h_max, numCircles, circleRadius, buffer);
 
     // the lines connecting the circles.
     const g_lines = draw.group();
@@ -71,38 +84,50 @@ function init() {
 // FUN PROGRAMMING STUFF:
 // ----------------------------------------------------------------
 
-// make a circle!
-// circles "know" whether or not they're selected.
-// when it's time to move, we'll only move circles that have the "selected" flag.
-// also, change colors to reflect state.
-function makeCircle(draw, r) {
+// make a whole group of circles. the variables, real quick:
+// draw: the canvas, w: width of canvas, h: height of canvas, n: num circles,
+// r: radius of each circle, b: buffer
+// and some custom events:
+// "solve" puts all the circles in a circle.
+// "scramble" scrambles their positions.
+// "clear" flags all circles as unselected.
+// "select" will flag a circle at a point as selected.
+// "dmove" will move all selected circles, but staying in bounds.
+function makeCircles(draw, w_min, w_max, h_min, h_max, n, r, b) {
     
-    return draw.circle(r)
-	.data('selected', false, true)
+    // make a circle!
+    // circles "know" whether or not they're selected.
+    // when it's time to move, we'll only move circles that have the "selected" flag.
+    // also, change colors to reflect state.
+    function makeCircle(draw, r) {
+	
+	return draw.circle(r)
+	    .data('selected', false, true)
 
-    // these are useful custom events ---- update state and recolor.
-	.on('select', function() {
-	    this.fill('rgb(150, 0, 0)')
-		.data('selected', true, true);
-	})
-	.on('deselect', function() {
-	    this.fill('rgb(0, 0, 0)')
-		.data('selected', false, true);	    
-	})
+	// these are useful custom events ---- update state and recolor.
+	    .on('select', function() {
+		this.fill('rgb(150, 0, 0)')
+		    .data('selected', true, true);
+	    })
+	    .on('deselect', function() {
+		this.fill('rgb(0, 0, 0)')
+		    .data('selected', false, true);	    
+	    })
+	
+	    .fire('deselect');
+    }
     
-	.fire('deselect');
-}
-
-function makeCircles(draw, w, h, n, r, b) {
-
-    var out = draw.group();
+    const out = draw.group();
     for (var i = 0; i < n; i++) {
 	makeCircle(out, r);
     }
-
+    
+    const bigCircleRadius = 200;
+    // this defines the bounding box for the circles.
+    
     // on "solve", we'll put the circles in a big circle.
-    var bigCircleRadius = 200;
     return out.on('solve', function() {
+	
 	this.each(function(i, children) {
 	    var circle = children[i];
 
@@ -113,39 +138,8 @@ function makeCircles(draw, w, h, n, r, b) {
 			h/2 + bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
 	});
     })
-	.on('clear', function() {
-	    this.each(function(i, children) {
-		children[i].fire('deselect');
-	    })
-	})
-	.on('select', function(e) {
-	    const px = e.detail.px, py = e.detail.py;
-
-	    var cont = true;
-	    this.each(function(i, children) {
-		var child = children[i];
-		if (cont &&
-		    child.inside(px, py)) {
-		    child.fire('select');
-		    cont = false;
-		}
-	    });
-	})
-	.on('dmove', function(e) {
-	    const dx = e.detail.dx, dy = e.detail.dy;
-	    
-	    this.each(function(i, children) {
-		var child = children[i];
-
-		if(child.data('selected')) {
-		    child.dmove(dx, dy);
-		}
-	    })
-	})
-    // on "scramble", simply scramble the positions.
+        // on "scramble", simply scramble the positions.
 	.on('scramble', function() {
-	    
-	    const w_min = b, w_max = w - b, h_min = b, h_max = h - b;
 	    function randRange(min, max) {
 		return Math.random() * (max - min) + min;
 	    }
@@ -157,6 +151,49 @@ function makeCircles(draw, w, h, n, r, b) {
 		    .center(randRange(w_min, w_max),
 			    randRange(h_min, h_max));
 	    });
+	})
+    // simply deselect all circles.
+	.on('clear', function() {
+	    this.each(function(i, children) {
+		children[i].fire('deselect');
+	    })
+	})
+    // iterate through children and find one that's at the given coordinate.
+	.on('select', function(e) {
+	    const px = e.detail.px, py = e.detail.py;
+
+	    // we're using this "looping" pattern to ensure we only select one circle.
+	    var looping = true;
+	    this.each(function(i, children) {
+		if (looping) {
+		    var child = children[i];
+		    if (child.inside(px, py)) {
+			child.fire('select');
+			looping = false;
+		    }
+		}
+	    });
+	})
+    // custom move function. only moves selected circles,
+    // and only moves them if they'll stay in bounds.
+	.on('dmove', function(e) {
+	    const dx = e.detail.dx, dy = e.detail.dy;
+	    
+	    this.each(function(i, children) {
+		const child = children[i];
+		const newx = child.cx() + dx;
+		const newy = child.cy() + dy;
+
+		if(child.data('selected')) {
+
+		    if (draw.inBoundsX(newx)) {
+			child.cx(newx);
+		    }
+		    if (draw.inBoundsY(newy)) {
+			child.cy(newy);
+		    }
+		}
+	    })
 	})
 	.fire('scramble');
 }
@@ -182,13 +219,11 @@ function makeBG(draw, w, h) {
 }
 
 // make a button that scrambles the circle positions.
-// for testing purposes i had it change the BG color. two in one test!
 // returns a group, not the canvas.
 function makeResetButton(draw, w, h, g_circles) {
     
     var out = draw.group().size(w, h);
 
-    // test function mentioned above.
     out.on('reset', function() {
 	g_circles.fire('scramble');
     });
@@ -233,6 +268,10 @@ function makeInput(draw, w, h, reset, g_circles) {
 	    var p = draw.point(e.pageX, e.pageY);
 	    this.data({ mousedown: true });
 
+	    // this block tells us if there's a circle under the mouse cursor on click,
+	    // as well as if it's a "new" (unselected) circle or not.
+	    // TODO: turn this into another custom event on makeCircles()?
+	    // i have no idea how that would work.
 	    var circle = null;
 	    var newcircle = false;
 	    var looping = true;
@@ -240,26 +279,34 @@ function makeInput(draw, w, h, reset, g_circles) {
 		if (looping) {
 		    var child = children[i];
 		    if (child.inside(p.x, p.y)) {
+
+			// important assignments!
 			circle = child;
-			if (!child.data('selected')) {
-			    newcircle = true;
-			}
+			newcircle = !child.data('selected');
 			looping = false;
 		    }
 		}
 	    });
 	    this.data({ newcircle: newcircle });
+	    // as of here, we know that:
+	    // circle will contain the circle under the pointer, or null if there is none.
+	    // newcircle will be true if circle was unselected before, and false otherwise.
 
+	    // first of all, if there was no circle, just clear everything.
 	    if (circle === null) {
 		g_circles.fire('clear');
+		// also, reset if needed.
 		if (reset.inside(p.x, p.y)) {
 		    reset.fire('reset');
 		}
 	    }
+	    // if we're here, we know we clicked on a circle.
 	    else {
+		// if we're not holding down shift, select this circle.
 		if (!this.data('shiftdown')) {
-		    g_circles.fire('select', { px: p.x, py: p.y });
+		    circle.fire('select');
 		}
+		// otherwise, we should toggle the selection.
 		else {
 		    if (circle.data('selected')) {
 			circle.fire('deselect');
@@ -271,48 +318,66 @@ function makeInput(draw, w, h, reset, g_circles) {
 		}
 	    }
 	})
+    // now for mouse movement:
 	.on('mousemove', function(e) {
 	    var p = draw.point(e.pageX, e.pageY);
+
+	    // this weirdness gets the recent motion of the mouse cursor.
 	    const prevX = this.data('mouseX');
 	    const prevY = this.data('mouseY');
 	    
 	    const dx = p.x - prevX;
 	    const dy = p.y - prevY;
-
+	    
 	    this.data({ mouseX: p.x });
 	    this.data({ mouseY: p.y });
+	    // now we know that dx and dy have the cursor's recent change in position.
+
+
 	    
+	    // only fire if the mouse is held down.
 	    if (this.data('mousedown')) {
+		console.log(`cursor: ${p.x}, ${p.y} (${dx}, ${dy})`);
+
+		// and only move things if shift is released.
 		if (!this.data('shiftdown')) {
-		    
+
+		    // if we've selected a new circle,
+		    // get rid the old circles.
 		    if (this.data('newcircle')) {
 			g_circles.fire('clear');
 			g_circles.fire('select', { px: p.x, py: p.y });
 			this.data({ newcircle: false });
 		    }
 
+		    // and move!
 		    g_circles.fire('dmove', { dx: dx, dy: dy });
 		    this.data({ moved: true });
 		}
 	    }
 	})
+    // and when the mouse is released:
 	.on('mouseup', function(e) {
 	    var p = draw.point(e.pageX, e.pageY);
 	    this.data({ mousedown: false });
 
+	    // if we didn't move anything, 
+	    // select just the circle under the cursor.
+	    // in the case of "shift",
+	    // we already handled the selection logic in mousedown, 
+	    // so we don't need to do anything here.
 	    if (!this.data('moved') &&
 		!this.data('shiftdown')) {
 		g_circles.fire('clear');
 		g_circles.fire('select', { px: p.x, py: p.y });
+		this.data({ moved: false });
 	    }
-
-	    this.data({ moved: false });
 	})
 
     // keyboard input:
 	.on('keydown', function(e) {
 	    var key = e.detail.key;
-	    switch(key) {
+	    switch(key) { // do different things depending on which key.
 		
 	    case 'r': reset.fire('reset'); break;                // r: reset the board.
 	    case ' ': g_circles.fire('solve'); break;            // space: "solve" the board (make a circle).
