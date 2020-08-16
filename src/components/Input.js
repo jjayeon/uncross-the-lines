@@ -13,6 +13,8 @@ function makeInput(draw, circles, lines, selection, reset) {
 	  w_max = draw.data('w_max'),
 	  h_min = draw.data('h_min'),
 	  h_max = draw.data('h_max'),
+
+	  // the rectangle to return.
 	  out = draw.rect(w, h);
 
     // some boilerplate to pass keystrokes to our input layer.
@@ -24,12 +26,9 @@ function makeInput(draw, circles, lines, selection, reset) {
 	out.fire('keyup', e);
     }
 
-    // just an ordinary transparent rectangle...
-    return out.fill({ opacity: 0 })
-
     // oh no state variables
     // trust me we need all of these
-	.data({
+	out.data({
 	    // the most recent mouse position.
 	    mouseX: 0,
 	    mouseY: 0,
@@ -51,8 +50,10 @@ function makeInput(draw, circles, lines, selection, reset) {
     // oh no logic
     // mouse input:
 	.on('mousedown', function(e) {
+	    
 	    // this transforms the click point into a point SVG can understand.
-	    const p = draw.point(e.pageX, e.pageY);
+	    const p = draw.point(e.x, e.y);
+	    
 	    this.data({ mousedown: true });
 
 	    // this block tells us if there's a circle under the mouse cursor on click,
@@ -104,9 +105,12 @@ function makeInput(draw, circles, lines, selection, reset) {
 
 	    }
 	})
+    
     // now for mouse movement:
 	.on('mousemove', function(e) {
-	    const p = draw.point(e.pageX, e.pageY);
+	    const p = draw.point(e.x, e.y);
+
+	    this.data({ moved: true });
 
 	    // this weirdness gets the recent motion of the mouse cursor.
 	    const prevX = this.data('mouseX');
@@ -139,14 +143,16 @@ function makeInput(draw, circles, lines, selection, reset) {
 			circles.fire('dy', { dy: dy });
 		    }
 
+		    // update our lines.
 		    lines.fire('redraw');
 		}
-		this.data({ moved: true });
 	    }
 	})
+    
     // and when the mouse is released:
 	.on('mouseup', function(e) {
-	    const p = draw.point(e.pageX, e.pageY);
+	    const p = draw.point(e.x, e.y);
+	    
 	    this.data({ mousedown: false });
 
 	    // if we moved the cursor...
@@ -156,57 +162,66 @@ function makeInput(draw, circles, lines, selection, reset) {
 		if (this.data('boxing')) {
 
 		    // select every circle that intersects with the box.
-		    circles.each(function(i, children) {
-			const child = children[i];
-
-			if (selection.intersects(child)) {
-			    child.fire('select');
+		    circles.each(function() {
+			if (selection.intersects(this)) {
+			    this.fire('select');
 			}
 		    }); 
-		    this.data({ boxing: false });
 		}
 	    }
 
-	    // if we click a selected circle without holding shift,
-	    // we should select just that circle.
+	    // if we're here, we clicked in place.
 	    else {
+		// if it's a normal click, clear the selection.
 		if (!this.data('shiftdown')) {
 	    	    circles.fire('clear');
 		}
 
-		// console.log(this.data('circle'));
+		// if we clicked a circle, select it.
 		if (this.data('circle')) {
 		    SVG('#'+this.data('circle')).fire('select');
-		    this.data({ circle: null });
 		}
+		// you might be wondering, we modified selection in mousedown.
+		// why are we doing it again here?
+		// the answer is that if you click a selected circle without holding shift,
+		// you should deselect all other circles and just select that one.
+		// after a ton of trial and error, this is the best way i found to do that.
 	    }
 
 	    // check to see if we've won.
 	    lines.fire('check');
 
 	    selection.hide();
-	    this.data({ clickedCircle: false });
-	    this.data({ clickedNewCircle: false });
-	    this.data({ moved: false });
+	    this.data({
+		moved: false,
+		boxing: false,
+		circle: null,
+		clickedNewCircle: false
+	    });
 	})
 
     // keyboard input:
 	.on('keydown', function(e) {
 	    const key = e.detail.key;
-	    switch(key) { // do different things depending on which key.
-		
-	    case 'r': reset.fire('reset'); break;                // r: reset the board.
-	    case ' ': circles.fire('solve'); break;            // space: "solve" the board (make a circle).
-	    case 'Shift': this.data({ shiftdown: true }); break; // shift: toggle the "shift" state.
+
+	    // do different things depending on which key.
+	    switch(key) {
+		// r: reset the board.
+	    case 'r': reset.fire('reset'); break;
+		// shift: toggle the "shift" state.
+	    case 'Shift': this.data({ shiftdown: true }); break;
 	    }
 	})
 	.on('keyup', function(e) {
 	    const key = e.detail.key;
+
 	    switch(key) {
-		
-	    case 'Shift': this.data({ shiftdown: false }); break; // shift: toggle the "shift" state.
+		// shift: toggle the "shift" state.
+	    case 'Shift': this.data({ shiftdown: false }); break;
 	    }
 	});
+
+    return out.fill({ opacity: 0 })
 }
 
 export default makeInput;

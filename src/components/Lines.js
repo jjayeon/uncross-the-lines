@@ -46,7 +46,7 @@ function makeLines(draw, bg, circles) {
 		this.data({ crossed: crossed });
 	    });
     }
-    // end helper function
+    // end makeLine()
 
     const out = draw.group();
 
@@ -154,8 +154,8 @@ function makeLines(draw, bg, circles) {
     
     for (var i = 0; i < children.length; i++) {
 	const a = angles[i % angles.length];
-	children[i].center(cw + t * (i+1) * Math.cos(a),
-			   ch + t * (i+1) * Math.sin(a));
+	// children[i].center(cw + t * (i+1) * Math.cos(a),
+	//  		   ch + t * (i+1) * Math.sin(a));
     }
 
     var outer = [children[0], children[1], children[2]];

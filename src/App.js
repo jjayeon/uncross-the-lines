@@ -15,26 +15,28 @@ import makeSelectionBox from './components/Selection.js';
 import makeCircles from './components/Circles.js';
 import makeLines from './components/Lines.js';
 import makeInput from './components/Input.js';
+// each of these files has more nice comments~
 
 function App() {
 
     // CONSTANTS:
+    // these values are being defined here because
+    // there's no way to calculate them inside draw.data().
     // --------------------------------
     // getting the screen size.
-    const width  = (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth) *  (9/10);
-    const height = (window.innerHeight|| document.documentElement.clientHeight|| document.body.clientHeight) * (9/10);
-    // note the 9/10 at the end --- that's a hack to prevent overspill at the edge.
+    const width  = (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth) *  (9/10),
+	  height = (window.innerHeight|| document.documentElement.clientHeight|| document.body.clientHeight) * (9/10),
+	  // note the 9/10 at the end --- that's a hack to prevent overspill at the edge.
 
-    // determine button dimensions based on screen size.
-    // if width > height (horizontal), make it a bit smaller,
-    // and if width < height (vertical), make it a bit bigger.
-    const buttonWidth = width / ((width > height) ? 10 : 3);
-    // the button's height is always a function of its width.
-    const buttonHeight = buttonWidth / 3;
-    // don't make circles this close to the edge.
-    const buffer = buttonHeight;
-    // these values are being defined here because they require
-    // a whole mess of dependencies I don't want to deal with.
+	  // determine button dimensions based on screen size.
+	  // if width > height (horizontal), make it a bit smaller,
+	  // and if width < height (vertical), make it a bit bigger.
+	  // TODO: be smarter about this.
+	  buttonWidth = width / ((width > height) ? 10 : 3),
+	  // the button's height is always a function of its width.
+	  buttonHeight = buttonWidth / 3,
+	  // don't make circles this close to the edge.
+	  buffer = buttonHeight;
     
     // SVG STUFF:
     // --------------------------------
@@ -69,19 +71,15 @@ function App() {
 	return h_min < y && y < h_max;
     }
     
-    // the background...
-    const bg = makeBG(draw),
-	  // the circles that the user can click on...
-	  circles = makeCircles(draw),
-	  // the lines connecting the circles...
-	  lines = makeLines(draw, bg, circles),
-	  // the selection box...
+    // the various SVG components.
+    // see their respective files for more info.
+    const bg =        makeBG(draw),
 	  selection = makeSelectionBox(draw),
-	  // the big orange reset button...
-	  reset = makeResetButton(draw, circles, lines),
-	  // and the input layer.
-	  // see ./components/Input.js for more info.
-	  input = makeInput(draw, circles, lines, selection, reset);
+	  circles =   makeCircles(draw),
+	  lines =     makeLines(draw, bg, circles),
+	  reset =     makeResetButton(draw, circles, lines),
+	  input =     makeInput(draw, circles, lines, selection, reset);
+    // order is important --- some of these objects needs references to the previous ones.
     
     // put everything in the right order.
     bg.front();
@@ -92,4 +90,5 @@ function App() {
     input.front();
 }
 
+// and done!
 export default App;

@@ -3,9 +3,13 @@
 
 function makeSelectionBox(draw) {
 
-    const out = draw.rect(0, 0)
+    const out = draw.rect()
 	  .stroke({ color: 'rgb(0, 150, 0)', opacity: 1})
 	  .fill({ color: 'rgb(0, 150, 0)', opacity: 0.2})
+	  .data({
+	      anchorX: 0,
+	      anchorY: 0
+	  });
 
     // a helper function that checks if the selection box is intersecting another shape.
     out.intersects = function(that) {
@@ -26,11 +30,9 @@ function makeSelectionBox(draw) {
 
     // on 'anchor', fix the box to a certain position.
     // (also, reset its size).
-    return out.on('anchor', function(e) {
-	const x = e.detail.x,
-	      y = e.detail.y;
-	this.data({ anchorX: x,
-		    anchorY: y })
+    out.on('anchor', function(e) {
+	this.data({ anchorX: e.detail.x,
+		    anchorY: e.detail.y })
 	    .size(0, 0);
 	
     })
@@ -43,11 +45,13 @@ function makeSelectionBox(draw) {
 		  ex = e.detail.x,
 		  ey = e.detail.y;
 	    
-	    this.move(Math.min(ax, ex),
-		      Math.min(ay, ey))
-	    this.size(Math.abs(ex - ax),
-		      Math.abs(ey - ay));
+	    this.move(Math.min(ax,  ex),
+		      Math.min(ay,  ey))
+		.size(Math.abs(ax - ex),
+		      Math.abs(ay - ey));
 	});
+
+    return out.hide();
 }
 
 export default makeSelectionBox;
