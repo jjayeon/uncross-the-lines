@@ -1,9 +1,6 @@
-# ignore distribution files
+# ignore distribution files and node packages
 dist/
-
-# im pretty sure we don't need these
-package-lock.json
-node_modules/.cache/*
+node_modules/
 
 # emacs backups
 *~
