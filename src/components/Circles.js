@@ -21,22 +21,6 @@ function makeCircles(draw) {
 				     (h_max - h_min) / 2);
     
     const out = draw.group();
-
-    // helper function for getting a circle at a certain coordinate.
-    out.getCircleAt = function(x, y) {
-	var circle = null;
-	var looping = true;
-	this.each(function(i, children) {
-	    if (looping) {
-		const child = children[i];
-		if (child.inside(x, y)) {
-		    circle = child;
-		    looping = false;
-		}
-	    }
-	});
-	return circle;
-    }
     
     for (var i = 0; i < numCircles; i++) {
 
@@ -54,23 +38,36 @@ function makeCircles(draw) {
 	    .fire('deselect');
     }
 
-    // on "solve", we'll put the circles in a big circle.
-    return out.on('solve', function() {
-	
+    // helper function for getting a circle at a certain coordinate.
+    out.getCircleAt = function(x, y) {
+	var circle = null;
+	var looping = true;
 	this.each(function(i, children) {
-	    const circle = children[i];
-
-	    // this goes in a circle.
-	    // if you're puzzled, ask your trig professor.
-	    circle.fire('deselect')
-		.center((w_min + w_max) / 2 +
-			bigCircleRadius * Math.cos(Math.PI*2 * (i/children.length)),
-			(h_min + h_max) / 2 +
-			bigCircleRadius * Math.sin(Math.PI*2 * (i/children.length)));
+	    if (looping) {
+		const child = children[i];
+		if (child.inside(x, y)) {
+		    circle = child;
+		    looping = false;
+		}
+	    }
 	});
-    })
+	return circle;
+    }
+
+    // on "solve", we'll put the circles in a big circle.
+    // return out.on('solve', function() {
+    // 	this.each(function() {
+    // 	    // this goes in a circle.
+    // 	    // if you're puzzled, ask your trig professor.
+    // 	    this.fire('deselect')
+    // 		.center((w_min + w_max) / 2 +
+    // 			bigCircleRadius * Math.cos(Math.PI*2 * (i/this.children.length)),
+    // 			(h_min + h_max) / 2 +
+    // 			bigCircleRadius * Math.sin(Math.PI*2 * (i/this.children.length)));
+    // 	});
+    // })
     // on "scramble", simply scramble the positions.
-	.on('scramble', function() {
+    return out.on('scramble', function() {
 	    function randRange(min, max) {
 		return Math.random() * (max - min) + min;
 	    }
@@ -83,6 +80,7 @@ function makeCircles(draw) {
 			    randRange(h_min, h_max));
 	    });
 	})
+    
     // simply deselect all circles.
 	.on('clear', function() {
 	    this.each(function(i, children) {
@@ -99,6 +97,7 @@ function makeCircles(draw) {
 	    }
 	    // we're using this "looping" pattern to ensure we only select one circle.
 	})
+    
     // custom move functions. only move selected circles,
     // and only move them if they'll stay in bounds.
 	.on('dx', function(e) {

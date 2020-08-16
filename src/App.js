@@ -78,7 +78,7 @@ function App() {
 	  // the selection box...
 	  selection = makeSelectionBox(draw),
 	  // the big orange reset button...
-	  reset = makeResetButton(draw, circles),
+	  reset = makeResetButton(draw, circles, lines),
 	  // and the input layer.
 	  // see ./components/Input.js for more info.
 	  input = makeInput(draw, circles, lines, selection, reset);

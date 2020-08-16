@@ -138,6 +138,8 @@ function makeInput(draw, circles, lines, selection, reset) {
 		    if (draw.inBoundsY(p.y)) {
 			circles.fire('dy', { dy: dy });
 		    }
+
+		    lines.fire('redraw');
 		}
 		this.data({ moved: true });
 	    }
