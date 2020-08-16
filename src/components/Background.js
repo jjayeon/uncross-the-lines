@@ -1,7 +1,9 @@
 // make a big rectangle covering the whole canvas.
 // changes color on 'success' and 'failure' events,
 // and stores the game's win state.
-function makeBG(draw, w, h) {
+function makeBG(draw) {
+    const w = draw.data('width'),
+	  h = draw.data('height');
     
     return draw.rect(w, h)
 	.data('success', false, true)

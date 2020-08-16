@@ -3,11 +3,26 @@
 // and every time you click on it, it'll pass information to any objects on that point.
 // this layer will also keep track of things like whether shift is held down,
 // whether the mouse is held down, etc.
-function makeInput(draw, w, h, reset, g_circles) {
+function makeInput(draw, reset, g_circles) {
+    const w = draw.data('width'),
+	  h = draw.data('height'),
+	  w_min = draw.data('w_min'),
+	  w_max = draw.data('w_max'),
+	  h_min = draw.data('h_min'),
+	  h_max = draw.data('h_max'),
+	  out = draw.rect(w, h);
+
+    // some boilerplate to pass keystrokes to our input layer.
+    // SVG.js can handle clicks natively, but not keystrokes. go figure.
+    document.onkeydown = function(e) {
+	out.fire('keydown', e);
+    }
+    document.onkeyup = function(e) {
+	out.fire('keyup', e);
+    }
 
     // just an ordinary transparent rectangle...
-    return draw.rect(w, h)
-	.fill({ opacity: 0 })
+    return out.fill({ opacity: 0 })
 
     // oh no state variables
 	.data({

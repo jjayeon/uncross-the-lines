@@ -29,65 +29,55 @@ function App() {
     const buttonWidth = width / ((width > height) ? 10 : 3);
     // the button's height is always a function of its width.
     const buttonHeight = buttonWidth / 3;
-    
     // don't make circles this close to the edge.
     const buffer = buttonHeight;
-
-    // get the true bounds of the canvas.
-    const w_min = buffer, w_max = width - buffer,
-	  h_min = buffer, h_max = height - buffer;
+    // these values are being defined here because they require
+    // a whole mess of dependencies I don't want to deal with.
     
-    // circle values.
-    const numCircles = 10;
-    const circleRadius = 20;
-
     // SVG STUFF:
     // --------------------------------
-    const draw = SVG().addTo('#drawing').size(width, height);
+    const draw = SVG().addTo('#drawing')
+	  .size(width, height)
+	  .data({
+	      // include all our "global" variables in draw.data().
+	      width: width,
+	      w_min: buffer,
+	      w_max: width - buffer,
 
-    // define some helper functions on draw.
-    // draw is the only namespace that's guaranteed to be in all contexts, so we're putting it here.
-    // TODO: do this in a way that isn't obscenely disgusting.
-    draw.inBoundsX = function (x) {
+	      height: height,
+	      h_min: buffer,
+	      h_max: height - buffer,
+
+	      buttonWidth: buttonWidth,
+	      buttonHeight: buttonHeight,
+	      buffer: buffer
+	  });
+
+    // define some helper functions for checking bounds.
+    // unfortunately, you can't use SVGjs data for functions,
+    // so this is the best way to have these functions available globally.
+    draw.inBoundsX = function(x) {
+	const w_min = this.data('w_min'),
+	      w_max = this.data('w_max');
 	return w_min < x && x < w_max;
     }
-    draw.inBoundsY = function (y) {
+    draw.inBoundsY = function(y) {
+	const h_min = this.data('h_min'),
+	      h_max = this.data('h_max');
 	return h_min < y && y < h_max;
     }
+    
     // the circles that the user can click on.
-    const g_circles = makeCircles(draw, w_min, w_max, h_min, h_max, numCircles, circleRadius, buffer);
-    g_circles.getCircleAt = function(x, y) {
-	var circle = null;
-	var looping = true;
-	this.each(function(i, children) {
-	    if (looping) {
-		const child = children[i];
-		if (child.inside(x, y)) {
-		    circle = child;
-		    looping = false;
-		}
-	    }
-	});
-	return circle;
-    }
+    const g_circles = makeCircles(draw);
     
     // the lines connecting the circles.
     const g_lines = draw.group();
 
     // and the other SVG stuff --- the background, reset button, and input layer.
     // see ./components/Input.js for more info on the input layer.
-    const bg = makeBG(draw, width, height);
-    const reset = makeResetButton(draw, buttonWidth, buttonHeight, g_circles);
-    const input = makeInput(draw, width, height, reset, g_circles);
-
-    // some boilerplate to pass keystrokes to our input layer.
-    // SVG.js can handle clicks natively, but not keystrokes. go figure.
-    document.onkeydown = function(e) {
-	input.fire('keydown', e);
-    }
-    document.onkeyup = function(e) {
-	input.fire('keyup', e);
-    }
+    const bg = makeBG(draw);
+    const reset = makeResetButton(draw, g_circles);
+    const input = makeInput(draw, reset, g_circles);
     
     // put everything in the right order.
     bg.front();
