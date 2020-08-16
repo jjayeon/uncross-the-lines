@@ -72,22 +72,22 @@ function App() {
     // the background...
     const bg = makeBG(draw),
 	  // the circles that the user can click on...
-	  g_circles = makeCircles(draw),
+	  circles = makeCircles(draw),
 	  // the lines connecting the circles...
-	  g_lines = makeLines(draw, bg, g_circles),
+	  lines = makeLines(draw, bg, circles),
 	  // the selection box...
 	  selection = makeSelectionBox(draw),
 	  // the big orange reset button...
-	  reset = makeResetButton(draw, g_circles),
+	  reset = makeResetButton(draw, circles),
 	  // and the input layer.
 	  // see ./components/Input.js for more info.
-	  input = makeInput(draw, g_circles, selection, reset);
+	  input = makeInput(draw, circles, lines, selection, reset);
     
     // put everything in the right order.
     bg.front();
     reset.front();
-    g_lines.front();
-    g_circles.front();
+    lines.front();
+    circles.front();
     selection.front();
     input.front();
 }

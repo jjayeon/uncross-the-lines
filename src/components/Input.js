@@ -4,7 +4,9 @@
 // this layer will also keep track of things like whether shift is held down,
 // whether the mouse is held down, etc.
 
-function makeInput(draw, g_circles, selection, reset) {
+import { SVG } from '@svgdotjs/svg.js';
+
+function makeInput(draw, circles, lines, selection, reset) {
     const w = draw.data('width'),
 	  h = draw.data('height'),
 	  w_min = draw.data('w_min'),
@@ -36,6 +38,8 @@ function makeInput(draw, g_circles, selection, reset) {
 	    moved: false,
 	    // whether or not we're drawing a box.
 	    boxing: false,
+	    // if we clicked on a circle, store it here.
+	    circle: null,
 	    // and whether or not our circle was selected before.
 	    clickedNewCircle: false,
 
@@ -53,9 +57,10 @@ function makeInput(draw, g_circles, selection, reset) {
 
 	    // this block tells us if there's a circle under the mouse cursor on click,
 	    // as well as if it's a "new" (unselected) circle or not.
-	    const circle = g_circles.getCircleAt(p.x, p.y);
+	    const circle = circles.getCircleAt(p.x, p.y);
 	    const clickedNewCircle = circle && !circle.data('selected')
-	    
+
+	    this.data({ circle: (circle ? circle.id() : null) });
 	    this.data({ clickedNewCircle: clickedNewCircle });
 	    // as of here, we know that:
 	    // circle will contain the circle under the pointer, or null if there is none.
@@ -64,7 +69,7 @@ function makeInput(draw, g_circles, selection, reset) {
 	    // first of all, if there was no circle, just clear everything.
 	    if (circle === null) {
 		if (!this.data('shiftdown')) {
-		    g_circles.fire('clear');
+		    circles.fire('clear');
 		}
 		// reset if needed.
 		if (reset.inside(p.x, p.y)) {
@@ -92,7 +97,7 @@ function makeInput(draw, g_circles, selection, reset) {
 		// if we're not holding down shift, just select this circle.
 		else {
 		    if (clickedNewCircle) {
-		    	g_circles.fire('clear');
+		    	circles.fire('clear');
 		    }
 		    circle.fire('select');
 		}
@@ -128,10 +133,10 @@ function makeInput(draw, g_circles, selection, reset) {
 
 		    // if all's well, start moving the selection!
 		    if (draw.inBoundsX(p.x)) {
-			g_circles.fire('dx', { dx: dx });
+			circles.fire('dx', { dx: dx });
 		    }
 		    if (draw.inBoundsY(p.y)) {
-			g_circles.fire('dy', { dy: dy });
+			circles.fire('dy', { dy: dy });
 		    }
 		}
 		this.data({ moved: true });
@@ -149,7 +154,7 @@ function makeInput(draw, g_circles, selection, reset) {
 		if (this.data('boxing')) {
 
 		    // select every circle that intersects with the box.
-		    g_circles.each(function(i, children) {
+		    circles.each(function(i, children) {
 			const child = children[i];
 
 			if (selection.intersects(child)) {
@@ -162,10 +167,20 @@ function makeInput(draw, g_circles, selection, reset) {
 
 	    // if we click a selected circle without holding shift,
 	    // we should select just that circle.
-	    else if (!this.data('shiftdown')) {
-	    	g_circles.fire('clear');
-	    	g_circles.fire('select', { px: p.x, py: p.y });
+	    else {
+		if (!this.data('shiftdown')) {
+	    	    circles.fire('clear');
+		}
+
+		// console.log(this.data('circle'));
+		if (this.data('circle')) {
+		    SVG('#'+this.data('circle')).fire('select');
+		    this.data({ circle: null });
+		}
 	    }
+
+	    // check to see if we've won.
+	    lines.fire('check');
 
 	    selection.hide();
 	    this.data({ clickedCircle: false });
@@ -179,7 +194,7 @@ function makeInput(draw, g_circles, selection, reset) {
 	    switch(key) { // do different things depending on which key.
 		
 	    case 'r': reset.fire('reset'); break;                // r: reset the board.
-	    case ' ': g_circles.fire('solve'); break;            // space: "solve" the board (make a circle).
+	    case ' ': circles.fire('solve'); break;            // space: "solve" the board (make a circle).
 	    case 'Shift': this.data({ shiftdown: true }); break; // shift: toggle the "shift" state.
 	    }
 	})

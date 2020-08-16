@@ -1,12 +1,12 @@
 // make a button that scrambles the circle positions.
 // returns a group, not the canvas.
-function makeResetButton(draw, g_circles) {
+function makeResetButton(draw, circles) {
     const w = draw.data('buttonWidth'),
 	  h = draw.data('buttonHeight'),
 	  out = draw.group().size(w, h);
 
     out.on('reset', function() {
-	g_circles.fire('scramble');
+	circles.fire('scramble');
     });
 
     // orange rectangle

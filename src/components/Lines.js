@@ -1,8 +1,27 @@
 
 function makeLines(draw, bg, circles) {
-    const out = draw.group();
+
+    function makeLine(draw, c1, c2) {
+	
+    }
     
-    return out.data('success', false, true);
+    const out = draw.group();
+
+    const children = circles.children();
+    var outer = [children[0], children[1], children[2]];
+
+    
+
+    out.on('check', function () {
+	if (bg.data('success')) {
+	    bg.fire('failure');
+	}
+	else {
+	    bg.fire('success');
+	}
+    });
+    
+    return out;
 }
 
 export default makeLines;
@@ -52,7 +71,7 @@ function samePoint(x0, y0, x1, y1, allowance) {
 // check to see if three points are counterclockwise
 function CCW(x0, y0, x1, y1, x2, y2) {
     return 0 > Math.sign(cross(x1 - x0, y1 - y0,
-                                      x2 - x0, y2 - y0));
+                               x2 - x0, y2 - y0));
 }
 
 // vectors yay!
