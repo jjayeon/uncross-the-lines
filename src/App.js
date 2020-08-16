@@ -9,9 +9,11 @@ import { SVG } from '@svgdotjs/svg.js';
 // as you can see, this project uses SVG.js.
 // go thru their crap documentation on svgjs.com for an overview.
 
-import makeResetButton from './components/Button.js';
-import makeCircles from './components/Circles.js';
 import makeBG from './components/Background.js';
+import makeResetButton from './components/Button.js';
+import makeSelectionBox from './components/Selection.js';
+import makeCircles from './components/Circles.js';
+import makeLines from './components/Lines.js';
 import makeInput from './components/Input.js';
 
 function App() {
@@ -54,7 +56,7 @@ function App() {
 	  });
 
     // define some helper functions for checking bounds.
-    // unfortunately, you can't use SVGjs data for functions,
+    // unfortunately, you can't use SVG.js data() for functions,
     // so this is the best way to have these functions available globally.
     draw.inBoundsX = function(x) {
 	const w_min = this.data('w_min'),
@@ -67,23 +69,26 @@ function App() {
 	return h_min < y && y < h_max;
     }
     
-    // the circles that the user can click on.
-    const g_circles = makeCircles(draw);
-    
-    // the lines connecting the circles.
-    const g_lines = draw.group();
-
-    // and the other SVG stuff --- the background, reset button, and input layer.
-    // see ./components/Input.js for more info on the input layer.
-    const bg = makeBG(draw);
-    const reset = makeResetButton(draw, g_circles);
-    const input = makeInput(draw, reset, g_circles);
+    // the background...
+    const bg = makeBG(draw),
+	  // the circles that the user can click on...
+	  g_circles = makeCircles(draw),
+	  // the lines connecting the circles...
+	  g_lines = makeLines(draw, g_circles),
+	  // the selection box...
+	  selection = makeSelectionBox(draw),
+	  // the big orange reset button...
+	  reset = makeResetButton(draw, g_circles),
+	  // and the input layer.
+	  // see ./components/Input.js for more info.
+	  input = makeInput(draw, g_circles, selection, reset);
     
     // put everything in the right order.
     bg.front();
     reset.front();
     g_lines.front();
     g_circles.front();
+    selection.front();
     input.front();
 }
 

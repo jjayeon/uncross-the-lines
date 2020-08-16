@@ -3,7 +3,8 @@
 // and every time you click on it, it'll pass information to any objects on that point.
 // this layer will also keep track of things like whether shift is held down,
 // whether the mouse is held down, etc.
-function makeInput(draw, reset, g_circles) {
+
+function makeInput(draw, g_circles, selection, reset) {
     const w = draw.data('width'),
 	  h = draw.data('height'),
 	  w_min = draw.data('w_min'),
@@ -25,12 +26,20 @@ function makeInput(draw, reset, g_circles) {
     return out.fill({ opacity: 0 })
 
     // oh no state variables
+    // trust me we need all of these
 	.data({
+	    // the most recent mouse position.
 	    mouseX: 0,
 	    mouseY: 0,
-	    moved: false,
-	    newcircle: false,
 
+	    // whether or not we moved in this mouse cycle.
+	    moved: false,
+	    // whether or not we're drawing a box.
+	    boxing: false,
+	    // and whether or not our circle was selected before.
+	    clickedNewCircle: false,
+
+	    // state variables for whether stuff is held down.
 	    shiftdown: false,
 	    mousedown: false
 	})
@@ -44,36 +53,34 @@ function makeInput(draw, reset, g_circles) {
 
 	    // this block tells us if there's a circle under the mouse cursor on click,
 	    // as well as if it's a "new" (unselected) circle or not.
-	    // TODO: turn this into another custom event on makeCircles()?
-	    // i have no idea how that would work.
 	    const circle = g_circles.getCircleAt(p.x, p.y);
-	    const newcircle = circle && !circle.data('selected')
-	    this.data({ newcircle: newcircle });
+	    const clickedNewCircle = circle && !circle.data('selected')
+	    
+	    this.data({ clickedNewCircle: clickedNewCircle });
 	    // as of here, we know that:
 	    // circle will contain the circle under the pointer, or null if there is none.
-	    // newcircle will be true if circle was unselected before, and false otherwise.
+	    // clickedNewCircle will be true if circle was unselected before, and false otherwise.
 
 	    // first of all, if there was no circle, just clear everything.
 	    if (circle === null) {
 		if (!this.data('shiftdown')) {
 		    g_circles.fire('clear');
 		}
-		// also, reset if needed.
+		// reset if needed.
 		if (reset.inside(p.x, p.y)) {
 		    reset.fire('reset');
+		}
+		// otherwise, start drawing a box.
+		else {
+		    selection.fire('anchor', {x: p.x, y: p.y});
+		    selection.show();
+		    this.data({ boxing: true });
 		}
 	    }
 	    // if we're here, we know we clicked on a circle.
 	    else {
-		// if we're not holding down shift, select this circle.
-		if (!this.data('shiftdown')) {
-		    if (newcircle) {
-			g_circles.fire('clear');
-		    }
-		    circle.fire('select');
-		}
-		// otherwise, we should toggle the selection.
-		else {
+		// if we're holding down shift, we should toggle the selection.
+		if (this.data('shiftdown')) {
 		    if (circle.data('selected')) {
 			circle.fire('deselect');
 		    }
@@ -82,6 +89,14 @@ function makeInput(draw, reset, g_circles) {
 		    }
 
 		}
+		// if we're not holding down shift, just select this circle.
+		else {
+		    if (clickedNewCircle) {
+		    	g_circles.fire('clear');
+		    }
+		    circle.fire('select');
+		}
+
 	    }
 	})
     // now for mouse movement:
@@ -99,24 +114,27 @@ function makeInput(draw, reset, g_circles) {
 	    this.data({ mouseY: p.y });
 	    // now we know that dx and dy have the cursor's recent change in position.
 
-
-	    
 	    // only fire if the mouse is held down.
 	    if (this.data('mousedown')) {
-		// console.log(`cursor: ${p.x}, ${p.y} (${dx}, ${dy})`);
 
-		// and only move things if shift is released.
-		if (!this.data('shiftdown')) {
+		// if we're drawing a box, redraw it.
+		if (this.data('boxing')) {
+		    selection.fire('redraw', { x: p.x, y: p.y });
+		}
 
-		    // and move!
+		// "Shift" stops circles from moving.
+		// I found this to be the best way to get consistent behavior. 
+		else if (!this.data('shiftdown')) {
+
+		    // if all's well, start moving the selection!
 		    if (draw.inBoundsX(p.x)) {
 			g_circles.fire('dx', { dx: dx });
 		    }
 		    if (draw.inBoundsY(p.y)) {
 			g_circles.fire('dy', { dy: dy });
 		    }
-		    this.data({ moved: true });
 		}
+		this.data({ moved: true });
 	    }
 	})
     // and when the mouse is released:
@@ -124,19 +142,34 @@ function makeInput(draw, reset, g_circles) {
 	    const p = draw.point(e.pageX, e.pageY);
 	    this.data({ mousedown: false });
 
-	    // if we didn't move anything, 
-	    // select just the circle under the cursor.
-	    // in the case of "shift",
-	    // we already handled the selection logic in mousedown, 
-	    // so we don't need to do anything here.
+	    // if we moved the cursor...
+	    if (this.data('moved')) {
 
-	    if (!this.data('moved') &&
-		!this.data('shiftdown')) {
-		g_circles.fire('clear');
-		g_circles.fire('select', { px: p.x, py: p.y });
+		// if we drew a box...
+		if (this.data('boxing')) {
+
+		    // select every circle that intersects with the box.
+		    g_circles.each(function(i, children) {
+			const child = children[i];
+
+			if (selection.intersects(child)) {
+			    child.fire('select');
+			}
+		    }); 
+		    this.data({ boxing: false });
+		}
 	    }
-	    
-	    this.data({ newcircle: false });
+
+	    // if we click a selected circle without holding shift,
+	    // we should select just that circle.
+	    else if (!this.data('shiftdown')) {
+	    	g_circles.fire('clear');
+	    	g_circles.fire('select', { px: p.x, py: p.y });
+	    }
+
+	    selection.hide();
+	    this.data({ clickedCircle: false });
+	    this.data({ clickedNewCircle: false });
 	    this.data({ moved: false });
 	})
 

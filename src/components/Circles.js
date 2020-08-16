@@ -19,7 +19,6 @@ function makeCircles(draw) {
     const radius = 20;
     const bigCircleRadius = Math.min((w_max - w_min) / 2,
 				     (h_max - h_min) / 2);
-    console.log(bigCircleRadius);
     
     const out = draw.group();
 
