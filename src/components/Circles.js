@@ -31,7 +31,7 @@ function makeCircles(draw) {
 
 	  // circle values.
 	  numCircles = 10,
-	  radius = 20,
+	  radius = 30,
 	  
 	  out = draw.group();
     
