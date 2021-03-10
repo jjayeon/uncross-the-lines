@@ -1,6 +1,8 @@
 # Uncross the Lines!
 
-A one-page javascript app implementing the wonderful game "Uncross the Lines."  Features a medley of advanced selection options --- shift-clicking and deselecting, box selection, and shift-boxing.  Other than that, it's very barebones.
+A one-page javascript app implementing the wonderful game "Uncross the Lines."  Features a medley of advanced selection options --- shift-clicking and deselecting, box selection, and shift-boxing.
+
+Play here: https://uncrossthelines.netlify.app/
 
 ## build instructions:
 
