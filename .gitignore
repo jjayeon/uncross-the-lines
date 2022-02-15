@@ -1,5 +1,6 @@
 # ignore distribution files and node packages
 dist/
+build/
 node_modules/
 
 # emacs backups
